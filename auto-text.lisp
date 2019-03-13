@@ -154,10 +154,25 @@ Returns: new file position or NIL on EOF."
                 (advance-after-eol stream eol-vector buffer) ;try again
                 ;; else: EOL found
                 ;; position after the EOL
-                (let ((rewind (- (length buffer) res (length eol-vector))))
+                (let ((rewind (- num res (length eol-vector))))
+                  
                   (file-position stream
                                  (- (file-position stream) rewind)))))))))
 
+
+;; included just for clarity
+;; (defun advance-after-pattern (stream vector buffer)
+;;   "within stream, seek until finding a byte sequence., 
+;; return the new file-position for positioning after said sequence..
+
+;; Input parameters: Stream,
+;; VECTOR is the sequence to find.
+;; buffer is a byte buffer, needs to be created beforehand
+
+;; Side effect: Stream file position altered to after sequence.
+
+;; Returns: new file position or NIL on EOF."
+;;   (advance-after-eol stream vector buffer))
 
 (defun sample-rows-bytes (path &key (eol-type :crlf)
                               (sample-size 10))
@@ -177,13 +192,14 @@ Returns a list of vectors. Each vector being a line, without including EOL bytes
         ;; advance / position after EOL
         (let* ((fpos1 (advance-after-eol str eol-vector buffer))
                ;; then again -- end of the other line
-               (fpos2 (advance-after-eol str eol-vector buffer))
-               (line-len (- fpos2 fpos1)))
-          ;; read and return the line!
-          (file-position str fpos1)
-          
-          (read-sequence buffer str :end line-len)
-          (push (copy-seq (subseq buffer 0 (- line-len eol-len))) result)))
+               (fpos2 (advance-after-eol str eol-vector buffer)))
+          (when (not (or (null fpos1)
+                         (null fpos2)))
+            (let ((line-len (- fpos2 fpos1)))
+              ;; read and return the line!
+              (file-position str fpos1)
+              (read-sequence buffer str :end line-len)
+              (push (copy-seq (subseq buffer 0 (- line-len eol-len))) result)))))
       result)))
 
 (defun bytes-to-string (vector encoding)

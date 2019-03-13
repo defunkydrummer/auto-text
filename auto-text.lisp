@@ -1,4 +1,6 @@
-;; automatically detect fixed width data
+;; automatically detect fixed width or CSV data
+;; REQUIRES BABEL
+
 
 (declaim (optimize (speed 3)))
 
@@ -7,7 +9,9 @@
 (deftype tbytebuffer () '(simple-array (unsigned-byte 8)))
 
 (defparameter *chunk-size* (* 1 (expt 2 20))) ; 1MB of chunk size
-(defparameter *eol-buffer-size* (expt 2 10)) ; buffer size for locating an end of line
+(defparameter *eol-buffer-size* (* 32 (expt 2 10)) ;32K
+  "Buffer size for locating an end of line.
+Needs to be bigger than the largest line expected!")  
 
 (defun make-buffer (size)
   (make-array size :element-type 'tbyte
@@ -67,7 +71,9 @@ Or CRLF.
 Or no line ending found!
 Or mixed results!
 
-This will work for 8-bit/7-bit encodings and UTF8 too."
+This will work for 8-bit/7-bit encodings and UTF8 too.
+
+The analysis is done by READING THE WHOLE FILE."
   (let* ((s (histogram-binary-file (make-status path)))
          (cr (aref (status-bins s) 13))
          (lf (aref (status-bins s) 10)))

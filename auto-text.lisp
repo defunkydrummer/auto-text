@@ -300,7 +300,7 @@ by making histogram on the position of each character in the line: how many are 
 
 requires reading the file one line at a time.
 
-returns: histogram bins, number of valid lines read.
+returns: histogram bins, number of valid lines read, number of invalid lines.
 "
   (declare (type fixnum width)
            (type symbol eol-type encoding)
@@ -325,10 +325,11 @@ returns: histogram bins, number of valid lines read.
       ;; read each record
       (let ((line buffer)
             (sline "")
-            (valid-lines 0))
+            (valid-lines 0)
+            (invalid-lines 0))
         (declare (type string sline)
                  (type simple-array buffer)
-                 (type fixnum valid-lines))
+                 (type fixnum valid-lines invalid-lines))
         (prog ()
          init
            (setf line (fetch-line str eol-vector buffer))
@@ -356,13 +357,14 @@ returns: histogram bins, number of valid lines read.
                    (go init))
                  ;; else
                  (progn
-                   (format t "Line of unequal width ~D at stream position ~D~%"
+                   (format t "** Line of unequal width ~D at stream position ~D~%"
                            (length sline)
                            (file-position str))
                    (format t "~A~%" sline)
+                   (incf invalid-lines)
                    (go init))
                  ))
          end
-           (return (values megabins valid-lines)))
+           (return (values megabins valid-lines invalid-lines)))
         ))))
 

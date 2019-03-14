@@ -13,6 +13,15 @@
   "Buffer size for locating an end of line.
 Needs to be bigger than the largest line expected!")  
 
+(defparameter *delimiter-chars-vector*
+  (vector (char-code #\Tab)
+          (char-code #\|)
+          (char-code #\,)
+          (char-code #\;)
+          13 ;CR
+          10) ;LF
+  "Delimiter chars to look for")
+
 (defun make-buffer (size)
   (make-array size :element-type 'tbyte
                            :initial-element 0
@@ -74,12 +83,7 @@ Only returns for characters below 127."
 
 (defun delimiters-report (s &optional
                               (delimiter-chars
-                               (vector (char-code #\Tab)
-                                       (char-code #\|)
-                                       (char-code #\,)
-                                       (char-code #\;)
-                                       13 ;CR
-                                       10))) ;LF
+                                *delimiter-chars-vector*)) 
   "For the chars in the delimiter-chars vector,
 return the histogram (amount of times it appears)."
   (let ((c (loop for i across delimiter-chars
@@ -319,24 +323,31 @@ Input parameters are number of characters per line."
                   ;; because UTF-8 is variable length, for example.
                   (babel:octets-to-string line :encoding encoding)))
            (when sline
-             (or (eql (length sline) width)
-                 (error
-                  (format nil "Line of unequal width at stream position ~D" (file-position str))))
-             ;; do histogram:
-             ;; array[x]: number of times a character other than space
-             ;; appears...
-             ;; x: position of the character within the line
-             ;; (but the line is decoded using Babel!)
-             (loop for pos of-type fixnum from 0 to (1- width)
-                   for chcode = (char-code (aref sline pos))
-                   ;; process this char for the histogram bins
-                   ;; corresponding to that position
-                   do (process-byte chcode
-                                    (aref megabins pos)))
+             (if (eql (length sline) width)
+                 (progn 
+                   ;; do histogram:
+                   ;; array[x]: number of times a character other than space
+                   ;; appears...
+                   ;; x: position of the character within the line
+                   ;; (but the line is decoded using Babel!)
+                   (loop for pos of-type fixnum from 0 to (1- width)
+                         for char = (aref sline pos)
+                         for chcode = (char-code char)
+                         ;; process this char for the histogram bins
+                         ;; corresponding to that position
+                         do (process-byte chcode
+                                          (elt megabins pos))) 
 
-             ;; next line
-             (go init))))
-      ;; return bins
+                   ;; next line
+                   (go init))
+                 ;; else
+                 (progn
+                   (format t "Line of unequal width ~D at stream position ~D~%"
+                           (length sline)
+                           (file-position str))
+                   (format t "~A~%" sline)
+                   (go init))
+                 ))))
       megabins
       )))
 

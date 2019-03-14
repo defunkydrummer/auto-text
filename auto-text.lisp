@@ -290,55 +290,69 @@ Each line does not include the EOL"
 Input parameters are number of characters per line."
   (and (eql max avg) (eql max min) T))
 
-;; automatically detect fixed width start of columns...
-;; by making histogram on character positions
-;; requires reading the file one line at a time.
-(defun histogram-fixed-width-file (s &key width eol-type encoding)
-  (declare (inline process-byte))
-  (assert (integerp width))
+
+(defun histogram-fixed-width-file (s &key width eol-type encoding
+                                          (separator-char #\Space)
+                                          (max-rows nil))
+  "
+automatically detect fixed width start of columns...
+by making histogram on the position of each character in the line: how many are spaces?
+
+requires reading the file one line at a time.
+
+returns: histogram bins, number of valid lines read.
+"
+  (declare (type fixnum width)
+           (type symbol eol-type encoding)
+           (type character separator-char)
+           (type status s)
+           (type (or fixnum null) max-rows)
+           (optimize (speed 3)))
   (let* ((path (status-path s))
          (buffer (make-buffer *eol-buffer-size*))
-         ;; array of arrays:
          ;; index: the position within the line -> array
-         ;; array: the bins that tell us how frequently each character appears
-         ;;        index: the char code
+         ;; value: how many spaces appear
          (megabins
            (make-array width
-                         :element-type 'simple-array 
-                         :adjustable nil
-                         :displaced-to nil
-                         :initial-element (make-array 256 :element-type 'fixnum
-                                                         :adjustable nil
-                                                         :displaced-to nil
-                                                         :initial-element 0)))
+                       :element-type 'fixnum 
+                       :adjustable nil
+                       :displaced-to nil
+                       ))
          (eol-vector (getf *eol* eol-type)))
+    (declare (type simple-array megabins buffer))
     (or eol-vector (error "Invalid eol-type"))
     (with-open-file (str path :element-type 'tbyte)
       ;; read each record
-      (prog ()
-       init
-         (let* ((line (fetch-line str eol-vector buffer))
-                (sline
-                  ;; decode line to string
-                  ;; because UTF-8 is variable length, for example.
-                  (babel:octets-to-string line :encoding encoding)))
+      (let ((line buffer)
+            (sline "")
+            (valid-lines 0))
+        (declare (type string sline)
+                 (type simple-array buffer)
+                 (type fixnum valid-lines))
+        (prog ()
+         init
+           (setf line (fetch-line str eol-vector buffer))
+           ;; decode line to string
+           ;; because UTF-8 is variable length, for example.
+           (setf sline (babel:octets-to-string line :encoding encoding))
+
            (when sline
              (if (eql (length sline) width)
                  (progn 
                    ;; do histogram:
-                   ;; array[x]: number of times a character other than space
-                   ;; appears...
+                   ;; array[x]: number of times space appears
                    ;; x: position of the character within the line
                    ;; (but the line is decoded using Babel!)
                    (loop for pos of-type fixnum from 0 to (1- width)
-                         for char = (aref sline pos)
-                         for chcode = (char-code char)
-                         ;; process this char for the histogram bins
-                         ;; corresponding to that position
-                         do (process-byte chcode
-                                          (elt megabins pos))) 
+                         for char of-type character = (aref sline pos)
+                         when (eql char separator-char)
+                         do (incf (aref megabins pos))) 
 
                    ;; next line
+                   (incf valid-lines)
+                   (when max-rows
+                     (if (eql max-rows valid-lines)
+                         (go end)))
                    (go init))
                  ;; else
                  (progn
@@ -347,8 +361,8 @@ Input parameters are number of characters per line."
                            (file-position str))
                    (format t "~A~%" sline)
                    (go init))
-                 ))))
-      megabins
-      )))
-
+                 ))
+         end
+           (return (values megabins valid-lines)))
+        ))))
 

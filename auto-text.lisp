@@ -201,7 +201,9 @@ Returns: new file position or NIL on EOF."
 (defun fetch-line (str eol-vector buffer)
   "Read line from stream (current position) into buffer.
 This advances the file position to after the end of line.
-This can also be used to read delimited files... "
+This can also be used to read delimited files...
+
+NIL when line not found (EOF)."
   (let* ((fpos1
            (if (zerop (file-position str)) 0
                (advance-after-eol str eol-vector buffer)))
@@ -258,5 +260,84 @@ Each line does not include the EOL"
                                             :sample-size sample-size)
         collecting 
         (bytes-to-string rows encoding)))
+
+
+;; simple way to see maximum and minimum line width
+(defun line-width-test (path &key eol-type (encoding :utf-8) (sample-size 1000))
+  "Sample some lines from the file and return the max, avg and min number of character in each line."
+  (loop 
+    for c in
+    ;; get some sample lines, check the size.
+    (mapcar
+     (lambda (x) (babel:vector-size-in-chars x :encoding encoding))
+     (sample-rows-bytes path :eol-type eol-type :sample-size sample-size))
+    maximizing c into i
+    minimizing c into j
+    summing c into s
+    counting T into x
+    finally (return (list :max i
+                          :min j
+                          :avg (float  (/ s x))
+                          :is-fixed
+                          (fixed-width-p i j (/ s x))))))
+
+(defun fixed-width-p (max min avg)
+  "T if must be a fixed width file.
+Input parameters are number of characters per line."
+  (and (eql max avg) (eql max min) T))
+
+;; automatically detect fixed width start of columns...
+;; by making histogram on character positions
+;; requires reading the file one line at a time.
+(defun histogram-fixed-width-file (s &key width eol-type encoding)
+  (declare (inline process-byte))
+  (assert (integerp width))
+  (let* ((path (status-path s))
+         (buffer (make-buffer *eol-buffer-size*))
+         ;; array of arrays:
+         ;; index: the position within the line -> array
+         ;; array: the bins that tell us how frequently each character appears
+         ;;        index: the char code
+         (megabins
+           (make-array width
+                         :element-type 'simple-array 
+                         :adjustable nil
+                         :displaced-to nil
+                         :initial-element (make-array 256 :element-type 'fixnum
+                                                         :adjustable nil
+                                                         :displaced-to nil
+                                                         :initial-element 0)))
+         (eol-vector (getf *eol* eol-type)))
+    (or eol-vector (error "Invalid eol-type"))
+    (with-open-file (str path :element-type 'tbyte)
+      ;; read each record
+      (prog ()
+       init
+         (let* ((line (fetch-line str eol-vector buffer))
+                (sline
+                  ;; decode line to string
+                  ;; because UTF-8 is variable length, for example.
+                  (babel:octets-to-string line :encoding encoding)))
+           (when sline
+             (or (eql (length sline) width)
+                 (error
+                  (format nil "Line of unequal width at stream position ~D" (file-position str))))
+             ;; do histogram:
+             ;; array[x]: number of times a character other than space
+             ;; appears...
+             ;; x: position of the character within the line
+             ;; (but the line is decoded using Babel!)
+             (loop for pos of-type fixnum from 0 to (1- width)
+                   for chcode = (char-code (aref sline pos))
+                   ;; process this char for the histogram bins
+                   ;; corresponding to that position
+                   do (process-byte chcode
+                                    (aref megabins pos)))
+
+             ;; next line
+             (go init))))
+      ;; return bins
+      megabins
+      )))
 
 

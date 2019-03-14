@@ -1,27 +1,14 @@
-;; automatically detect fixed width or CSV data
-;; REQUIRES BABEL
+(in-package :common-lisp)
 
 (defpackage :auto-text
-  (:use :cl :auto-text/util))
+  (:use :cl
+   :auto-text/common
+        :auto-text/config
+        :auto-text/bom))
 
 (in-package :auto-text)
 
 (declaim (optimize (speed 3)))
-
-(defparameter *chunk-size* (* 1 (expt 2 20))) ; 1MB of chunk size
-(defparameter *eol-buffer-size* (* 32 (expt 2 10)) ;32K
-  "Buffer size for locating an end of line.
-Needs to be bigger than the largest line expected!")  
-
-(defparameter *delimiter-chars-vector*
-  (vector (char-code #\Tab)
-          (char-code #\|)
-          (char-code #\,)
-          (char-code #\;)
-          13 ;CR
-          10) ;LF
-  "Delimiter chars to look for")
-
 
 (defstruct (status
             (:constructor make-status (path)))
@@ -114,44 +101,6 @@ The analysis is done by READING THE WHOLE FILE."
                   :lf lf))
     ))
 
-;; find if encoding is UTF-8 or what...
-;; they are searched in order.
-(defparameter *bomsearch*
-  '((:type :utf-8
-     :bom #(239 187 191)) ; BOM for UTF-8 : EF BB BF
-    (:type :utf32-le
-     :bom #(255 254 0 0))
-    (:type :utf-16be
-     :bom #(254 255)) ;  FE FF
-    (:type :utf-16le
-     :bom #(255 254))
-    (:type :utf32-be
-     :bom #(0 0 254 255))
-    ))
-
-
-(defun %detect-bom-type (byte-vector)
-  "Detect presence and type of BOM in byte vector"
-  (loop for test in *bomsearch*
-        for type = (getf test :type)
-        for bom = (getf test :bom)
-        if (eql 0 (search bom byte-vector :test 'equal))
-        return type))
-
-(defun detect-bom-type (path)
-  "Detect presence and type of BOM in file"
-  (with-open-file (str path :element-type 'tbyte)
-    (let ((buf (make-array 16 :element-type 'tbyte
-                           :initial-element 0
-                           )))
-      (read-sequence buf str :start 0 :end 15)
-      (%detect-bom-type buf))))
-
-
-(defparameter *eol*
-  '(:cr #(13)
-   :lf #(10)
-   :crlf #(13 10)))
 
 (defun advance-after-eol (stream eol-vector buffer)
   "within stream, seek until finding an EOL, 

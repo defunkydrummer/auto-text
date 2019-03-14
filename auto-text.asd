@@ -10,11 +10,15 @@
   :depends-on (:babel)    
   :serial T
   :components ((:file "common")
-               (:file "auto-text" )
-               )
-
+               (:file "config")
+               (:file "bom")
+               (:file "auto-text"))
+  
   :description "Utilities for working with data text files."
   :long-description "No long description!")
+
+
+
 
 
 

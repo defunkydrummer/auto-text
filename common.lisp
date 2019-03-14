@@ -1,5 +1,7 @@
+(in-package :common-lisp)
+
 ;; common stuff to our packages
-(defpackage :auto-text/util
+(defpackage :auto-text/common
   (:use :cl)
   (:export
    :tchar
@@ -8,7 +10,7 @@
    :make-buffer
    :bytes-to-string))
 
-(in-package :auto-text/util)
+(in-package :auto-text/common)
 
 (deftype tchar () 'character)
 (deftype tbyte () '(unsigned-byte 8))

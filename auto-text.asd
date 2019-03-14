@@ -12,6 +12,7 @@
   :components ((:file "common")
                (:file "config")
                (:file "bom")
+               (:file "eol-reader")
                (:file "auto-text"))
   
   :description "Utilities for working with data text files."

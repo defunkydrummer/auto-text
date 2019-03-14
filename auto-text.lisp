@@ -1,12 +1,12 @@
 ;; automatically detect fixed width or CSV data
 ;; REQUIRES BABEL
 
+(defpackage :auto-text
+  (:use :cl :auto-text/util))
+
+(in-package :auto-text)
 
 (declaim (optimize (speed 3)))
-
-(deftype tchar () 'character)
-(deftype tbyte () '(unsigned-byte 8))
-(deftype tbytebuffer () '(simple-array (unsigned-byte 8)))
 
 (defparameter *chunk-size* (* 1 (expt 2 20))) ; 1MB of chunk size
 (defparameter *eol-buffer-size* (* 32 (expt 2 10)) ;32K
@@ -22,12 +22,6 @@ Needs to be bigger than the largest line expected!")
           10) ;LF
   "Delimiter chars to look for")
 
-(defun make-buffer (size)
-  (make-array size :element-type 'tbyte
-                           :initial-element 0
-                           :adjustable nil
-                           :displaced-to nil
-                           ))
 
 (defstruct (status
             (:constructor make-status (path)))
@@ -251,9 +245,6 @@ Returns a list of vectors. Each vector being a line, without including EOL bytes
               (push (copy-seq (subseq buffer 0 (- line-len eol-len))) result)))))
       result)))
 
-(defun bytes-to-string (vector encoding)
-  "Convert bytes to string using the specified encoding. Uses BABEL."
-  (babel:octets-to-string vector :encoding encoding))
 
 (defun sample-rows-string (path &key (eol-type :crlf)
                                      (encoding :utf-8)
@@ -335,9 +326,8 @@ returns: histogram bins, number of valid lines read, number of invalid lines.
            (setf line (fetch-line str eol-vector buffer))
            ;; decode line to string
            ;; because UTF-8 is variable length, for example.
-           (setf sline (babel:octets-to-string line :encoding encoding))
-
-           (when sline
+           (when line
+             (setf sline (babel:octets-to-string line :encoding encoding))
              (if (eql (length sline) width)
                  (progn 
                    ;; do histogram:

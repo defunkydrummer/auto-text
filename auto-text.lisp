@@ -63,6 +63,30 @@ Histogram counts how many times a character of the corresponding code (0 to 255)
       s
       )))
 
+(defun histogram-report (s)
+  "Report histogram by characters with higher frequencies.
+Returns: alist of character . occurrences.
+Only returns for characters below 127."
+  (let ((c (loop for i from 0 to 255
+                 collecting (cons (code-char i)
+                                  (elt (status-bins s) i)))))
+    (sort c #'> :key #'cdr)))
+
+(defun delimiters-report (s &optional
+                              (delimiter-chars
+                               (vector (char-code #\Tab)
+                                       (char-code #\|)
+                                       (char-code #\,)
+                                       (char-code #\;)
+                                       13 ;CR
+                                       10))) ;LF
+  "For the chars in the delimiter-chars vector,
+return the histogram (amount of times it appears)."
+  (let ((c (loop for i across delimiter-chars
+                 collecting (cons (code-char i)
+                                  (elt (status-bins s) i)))))
+    (sort c #'> :key #'cdr)))
+
 
 ;; cr-lf analysis
 (defun analyze-cr-lf (path)
@@ -173,6 +197,25 @@ Returns: new file position or NIL on EOF."
 
 ;; Returns: new file position or NIL on EOF."
 ;;   (advance-after-eol stream vector buffer))
+
+(defun fetch-line (str eol-vector buffer)
+  "Read line from stream (current position) into buffer.
+This advances the file position to after the end of line.
+This can also be used to read delimited files... "
+  (let* ((fpos1
+           (if (zerop (file-position str)) 0
+               (advance-after-eol str eol-vector buffer)))
+         ;; then again -- go to the end of the other line
+         (fpos2 (advance-after-eol str eol-vector buffer)))
+    ;; get line length
+    (when (not (or (null fpos1)
+                   (null fpos2)))
+      (let ((line-len (- fpos2 fpos1)))
+        ;; read and return the line!
+        (file-position str fpos1)
+        (read-sequence buffer str :end line-len)
+        ;; the line itself...
+        (subseq buffer 0 (- line-len (length eol-vector)))))))
 
 (defun sample-rows-bytes (path &key (eol-type :crlf)
                               (sample-size 10))

@@ -39,9 +39,13 @@ Returns: new file position or NIL on EOF."
                 ;; else: EOL found
                 ;; position after the EOL
                 (let ((rewind (- num res (length eol-vector))))
-                  
+                  ;; NOTE:
+                  ;; spec says: file-position returns true if the repositioning is performed successfully
                   (file-position stream
-                                 (- (file-position stream) rewind)))))))))
+                                 (- (file-position stream) rewind))
+                  ;; return file pos
+                  (file-position stream)
+                  )))))))
 
 
 ;; included just for clarity

@@ -9,13 +9,16 @@
 
 (in-package :auto-text)
 
-(declaim (optimize (speed 3)))
+(declaim (optimize (speed 0) (debug 3)))
 
 (defun make-histogram-bins ()
     (make-array 256 :element-type 'fixnum
                     :adjustable nil
                     :initial-element 0
                     :displaced-to nil))
+
+(deftype tbins () '(simple-array fixnum))
+
 (defstruct (status
             (:constructor make-status (path)))
   "Status of detector."
@@ -55,39 +58,48 @@ Histogram counts how many times a character of the corresponding code (0 to 255)
       s
       )))
 
-(defun histogram-report (s)
+(defun histogram-report (bins)
   "Report histogram by characters with higher frequencies.
 Returns: alist of character . occurrences.
 Only returns for characters below 127."
+  (declare (type tbins bins))
   (let ((c (loop for i from 0 to 255
                  collecting (cons (code-char i)
-                                  (elt (status-bins s) i)))))
+                                  (aref bins i)))))
     (sort c #'> :key #'cdr)))
 
-(defun delimiters-report (s &optional
+(defun present-characters (bins)
+  "From the histogram bins, collect the char codes that were present (count>0)"
+  (declare (type tbins bins))
+  (loop for i from 0 to 255
+        when (> (aref bins i) 0)
+        collecting i))
+
+
+(defun delimiters-report (bins &optional
                               (delimiter-chars
                                 *delimiter-chars-vector*)) 
   "For the chars in the delimiter-chars vector,
 return the histogram (amount of times it appears)."
+  (declare (type tbins bins))
   (let ((c (loop for i across delimiter-chars
                  collecting (cons (code-char i)
-                                  (elt (status-bins s) i)))))
+                                  (aref bins i)))))
     (sort c #'> :key #'cdr)))
 
 
 ;; cr-lf analysis
-(defun analyze-cr-lf (path)
+(defun analyze-cr-lf (bins)
   "Analyze file and find if it is terminated by CR or LF. 
 Or CRLF. 
 Or no line ending found!
 Or mixed results!
 
 This will work for 8-bit/7-bit encodings and UTF8 too.
-
-The analysis is done by READING THE WHOLE FILE."
-  (let* ((s (histogram-binary-file (make-status path)))
-         (cr (aref (status-bins s) 13))
-         (lf (aref (status-bins s) 10)))
+"
+  (declare (type tbins bins))
+  (let* ((cr (aref bins 13))
+         (lf (aref bins 10)))
     (declare (type fixnum cr lf))
     ;; cr... lf
     (values (cond
@@ -103,7 +115,47 @@ The analysis is done by READING THE WHOLE FILE."
                   :lf lf))
     ))
 
+;; file format analysis
+(defparameter *format-detection*
+  `(:iso-8859-1  ; similar to windows-1252
+    ;; We assume that our UTF-8 file is never going to be
+    ;; Cyrillic or of an asian language
+    ;; 
+    ;; Note: E3...ED on UTF-8 would be used for asian characters
+    ;; D0..D4 used for cyrillic
+    ;; D5..DD armenic, arabic, hebrew, syriac
+    ;; * cells must never appear in a valid UTF-8 sequence:
+    ;;  c0, c1, f5...ff
+    (#xc1            ; tilde a uppercase *
+     #xfa            ; tilde u *
+     #xfc            ; u dieresis *
+                                        ;#xf1 ; spanish Ñ  --> USED IN UTF8
+                                        ;#xf2 ; tilde o reverse --> USED IN UTF8
+                                        ;#xf3 ; tilde o --> used in UTF8
+     #xd3            ; tilde o uppercase --> Cyrillic in UTF8
+     #xe9            ; tilde e --> asian UTF8
+     #xc9            ; tilde e uppercase
+     #xe8            ; backtilde e -- added for french --> asian UTF8
+     #xe2            ; a circumflex -- added for french --> asian UTF8
+                                        ;#xc2  ; a circumflex uppercase -- added for french  --> USED IN UTF8
+     #xe7 ; c cedilla -- added for french and portuguese --> asian UTF8
+     #xd1 ; spanish Ñ uppercase  --> CYRILLIC UTF8
+     )
+    :utf-8
+    ;; UTF-8 detection
+    ;; assume that is UTF-8 when illegal ISO-8859-1 characters are present
+    ,(append
+      (loop for x from #x7f to #x9f collecting x)))) 
 
+(defun detect-file-encoding (bins &optional (format-detection-rules
+                                             *format-detection*))
+  "Try to detect file encoding using the histogram bins."
+  (declare (type tbins bins))
+  (loop with present-chars = (present-characters bins) ;all characters with frequency>0
+        for f in format-detection-rules by #'cddr ;keys
+        when (intersection present-chars (getf format-detection-rules f) :test 'equal)
+        collect f
+        ))
 
 (defun sample-rows-bytes (path &key (eol-type :crlf)
                               (sample-size 10))
@@ -170,7 +222,7 @@ Input parameters are number of characters per line."
   (and (eql max avg) (eql max min) T))
 
 
-(defun histogram-fixed-width-file (s &key width eol-type encoding
+(defun histogram-fixed-width-file (path &key width eol-type encoding
                                           (separator-char #\Space)
                                           (max-rows nil))
   "
@@ -184,11 +236,10 @@ returns: histogram bins, number of valid lines read, number of invalid lines.
   (declare (type fixnum width)
            (type symbol eol-type encoding)
            (type character separator-char)
-           (type status s)
+           (type pathname path)
            (type (or fixnum null) max-rows)
            (optimize (speed 3)))
-  (let* ((path (status-path s))
-         (buffer (make-buffer *eol-buffer-size*))
+  (let* ((buffer (make-buffer *eol-buffer-size*))
          ;; index: the position within the line -> array
          ;; value: how many spaces appear
          (megabins

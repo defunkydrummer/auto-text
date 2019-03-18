@@ -4,7 +4,7 @@
   (:use :cl
    :auto-text/common
    :auto-text/config
-   :auto-text/bom
+   ;:auto-text/bom
    :auto-text/eol))
 
 (in-package :auto-text)
@@ -115,9 +115,10 @@ This will work for 8-bit/7-bit encodings and UTF8 too.
                   :lf lf))
     ))
 
-;; file format analysis
-(defparameter *format-detection*
-  `(:iso-8859-1  ; similar to windows-1252
+;; file encoding analysis
+(defparameter *encoding-detection-tables*
+  ;; the tests to perform
+  `(:iso-8859-1  ; similar but not equal to windows-1252
     ;; We assume that our UTF-8 file is never going to be
     ;; Cyrillic or of an asian language
     ;; 
@@ -141,21 +142,71 @@ This will work for 8-bit/7-bit encodings and UTF8 too.
      #xe7 ; c cedilla -- added for french and portuguese --> asian UTF8
      #xd1 ; spanish Ñ uppercase  --> CYRILLIC UTF8
      )
-    :utf-8
-    ;; UTF-8 detection
-    ;; assume that is UTF-8 when illegal ISO-8859-1 characters are present
+    :iso-8859-1-illegal
+    ;; chars that should not be on ISO 8859-1
     ,(append
-      (loop for x from #x7f to #x9f collecting x)))) 
+      (loop for x from #x80 to #x9f collecting x))
+    :windows-1252-illegal
+    ;; Note: Windows-1252 admits more chars than ISO-8859-1
+    (#x81 #x8d #x8f
+     #x90 #x9d )
+    :utf8-illegal
+    ;; illegal characters for UTF-8
+    ,(append
+      (loop for x from #xf5 to #xff collecting x)
+      (list #xc0 #xc1) ; other two illegal characters
+      )))
 
-(defun detect-file-encoding (bins &optional (format-detection-rules
-                                             *format-detection*))
-  "Try to detect file encoding using the histogram bins."
+(defparameter *encoding-detection-rules*
+  ;; execute rules in order
+  ;; if found... then
+  '((:test (:utf8-illegal :windows-1252-illegal) ;; complies both
+      :not nil
+     :result nil)
+    (:test-function (:utf8-illegal :iso-8859-1-illegal) ;; complies both
+     :not (:windows-1252-illegal)   ;;doesnt test for 1252 illegal
+     :result :windows-1252)
+    (:test (:utf8-illegal :iso-8859-1)
+     :not (:iso-8859-1-illegal)
+     :result :iso-8859-1)
+    (:test nil
+     :any (:windows-1252-illegal :iso-8859-1-illegal) ;; complies any of them
+     :not (:utf8-illegal)
+     :result :utf-8)))
+
+(defun detect-file-encoding (bins &optional
+                                    (tables *encoding-detection-tables*)
+                                    (rules
+                                             *encoding-detection-rules*))
+  "Try to detect file encoding using the histogram bins.
+Returns: The result of the test: list of detected encoding(s)
+secondary value: the tests that were complied from the encoding-detection-tables"
   (declare (type tbins bins))
-  (loop with present-chars = (present-characters bins) ;all characters with frequency>0
-        for f in format-detection-rules by #'cddr ;keys
-        when (intersection present-chars (getf format-detection-rules f) :test 'equal)
-        collect f
-        ))
+  (let* ((tests-complied
+          ;; apply each test in the tables.
+          (loop with present-chars = (present-characters bins) ;all characters with frequency>0
+                for f in tables by #'cddr ;keys: the tests to perform
+                for inter =  (intersection present-chars (getf tables f) :test 'equal)
+                when inter
+                collect f))
+         (rules-complied 
+           ;; process each rule...
+           (loop for r in rules
+                 ;; verify that all the tests in :test are complied
+                 for ok-tested = (subsetp (getf r :test) tests-complied :test 'equal)
+
+                 ;; verify that at least one of the tests in :any is complied
+                 for ok-any = (not (null (intersection  (getf r :any) tests-complied :test 'equal)))
+                 ;; verify that the tests in the :not list are not complied
+                 for ok-doesnt-test = (not
+                                       (subsetp (getf r :not) tests-complied :test 'equal))
+                 ;; below test is necessary because subsetp considers NIL
+                 ;; a subset of all sets
+                 when (and (or (null (getf r :test)) ok-tested)
+                           (or (null (getf r :any)) ok-any)
+                           (or (null (getf r :not)) ok-doesnt-test))
+                 collect (getf r :result))))
+    (values rules-complied tests-complied)))
 
 (defun sample-rows-bytes (path &key (eol-type :crlf)
                               (sample-size 10))

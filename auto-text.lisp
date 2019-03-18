@@ -11,15 +11,16 @@
 
 (declaim (optimize (speed 3)))
 
+(defun make-histogram-bins ()
+    (make-array 256 :element-type 'fixnum
+                    :adjustable nil
+                    :initial-element 0
+                    :displaced-to nil))
 (defstruct (status
             (:constructor make-status (path)))
   "Status of detector."
-  
   ;; used for histogram
-  (bins (make-array 256 :element-type 'fixnum
-                        :adjustable nil
-                        :initial-element 0
-                        :displaced-to nil)
+  (bins (make-histogram-bins)
    :type (simple-array fixnum))
   (path "" :type (or string pathname)))
 

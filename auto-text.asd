@@ -11,8 +11,10 @@
   :serial T
   :components ((:file "common")
                (:file "config")
+               (:file "histogram")
                (:file "bom")
-               (:file "eol-reader")
+               (:file "encoding")
+               (:file "eol-reader") ;eol package
                (:file "auto-text"))
   
   :description "Utilities for working with data text files."

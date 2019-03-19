@@ -7,6 +7,7 @@
    :tchar
    :tbyte
    :tbytebuffer
+   :tbins
    :make-buffer
    :bytes-to-string))
 
@@ -15,6 +16,9 @@
 (deftype tchar () 'character)
 (deftype tbyte () '(unsigned-byte 8))
 (deftype tbytebuffer () '(simple-array (unsigned-byte 8)))
+
+;;histogram bins
+(deftype tbins () '(simple-array fixnum))
 
 (defun make-buffer (size)
   (make-array size :element-type 'tbyte

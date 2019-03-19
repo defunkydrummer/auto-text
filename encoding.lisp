@@ -1,3 +1,6 @@
+;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
+;; MIT License
+
 ;; encoding detection
 
 (in-package :common-lisp)
@@ -8,7 +11,9 @@
    :auto-text/bom)
   (:import-from :auto-text/histogram #:present-characters)
   (:export
-   :detect-file-encoding))
+   :detect-file-encoding
+   :detect-bom-type
+   ))
 
 (in-package :auto-text/encoding)
 
@@ -78,7 +83,9 @@
                                      *encoding-detection-rules*))
   "Try to detect file encoding using the histogram bins.
 Returns: The result of the test: list of detected encoding(s)
-secondary value: the tests that were complied from the encoding-detection-tables"
+secondary value: the tests that were complied from the encoding-detection-table-
+
+Note: This does not use or read the BOM. For BOM use the functions below."
   (declare (type tbins bins))
   (let* ((tests-complied
            ;; apply each test in the tables.
@@ -105,4 +112,43 @@ secondary value: the tests that were complied from the encoding-detection-tables
                            (or (null (getf r :not)) ok-doesnt-test))
                  collect (getf r :result))))
     (values rules-complied tests-complied)))
+
+
+
+;; *************
+;; BOM detection
+;; *************
+
+;; find if encoding is UTF-8 or what... by reading the BOM
+;; they are searched in order.
+(defparameter *bomsearch*
+  '((:type :utf-8
+     :bom #(239 187 191)) ; BOM for UTF-8 : EF BB BF
+    (:type :utf32-le
+     :bom #(255 254 0 0))
+    (:type :utf-16be
+     :bom #(254 255)) ;  FE FF
+    (:type :utf-16le
+     :bom #(255 254))
+    (:type :utf32-be
+     :bom #(0 0 254 255))
+    ))
+
+
+(defun %detect-bom-type (byte-vector)
+  "Detect presence and type of BOM in byte vector"
+  (loop for test in *bomsearch*
+        for type = (getf test :type)
+        for bom = (getf test :bom)
+        if (eql 0 (search bom byte-vector :test 'equal))
+        return type))
+
+(defun detect-bom-type (path)
+  "Detect presence and type of BOM in file"
+  (with-open-file (str path :element-type 'tbyte)
+    (let ((buf (make-array 16 :element-type 'tbyte
+                              :initial-element 0
+                           )))
+      (read-sequence buf str :start 0 :end 15)
+      (%detect-bom-type buf))))
 

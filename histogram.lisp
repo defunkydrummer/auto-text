@@ -1,3 +1,6 @@
+;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
+;; MIT License
+
 (in-package :common-lisp)
 
 (defpackage :auto-text/histogram
@@ -23,13 +26,13 @@
                   :displaced-to nil))
 
 
-(defstruct (status
-            (:constructor make-status (path)))
-  "Status of detector."
-  ;; used for histogram
-  (bins (make-histogram-bins)
-   :type (simple-array fixnum))
-  (path "" :type (or string pathname)))
+;; (defstruct (status
+;;             (:constructor make-status (path)))
+;;   "Status of detector."
+;;   ;; used for histogram
+;;   (bins (make-histogram-bins)
+;;    :type (simple-array fixnum))
+;;   (path "" :type (or string pathname)))
 
 (declaim (inline process-byte))
 (defun process-byte (ch bins)

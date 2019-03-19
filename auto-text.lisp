@@ -1,10 +1,12 @@
+;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
+;; MIT License
+
 (in-package :common-lisp)
 
 (defpackage :auto-text
   (:use :cl
    :auto-text/common
    :auto-text/config
-                                        ;:auto-text/bom
    :auto-text/histogram
         :auto-text/eol
         :auto-text/encoding))

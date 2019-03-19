@@ -5,23 +5,17 @@
 
 (defsystem auto-text
   :version "0.1"
-  :author "Flavio Egoavil"
+  :author "Flavio Egoavil also known as D E F U N K Y D R U M M E R"
   :license "Proprietary"
   :depends-on (:babel)    
   :serial T
   :components ((:file "common")
                (:file "config")
                (:file "histogram")
-               (:file "bom")
                (:file "encoding")
                (:file "eol-reader") ;eol package
                (:file "auto-text"))
   
   :description "Utilities for working with data text files."
   :long-description "No long description!")
-
-
-
-
-
 

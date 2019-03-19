@@ -7,9 +7,6 @@
         )
   (:export
    :make-histogram-bins
-   :make-status
-   :status
-   :status-bins
    :process-byte
    :histogram-binary-file
    :histogram-report
@@ -44,12 +41,12 @@ Histogram counts how many times a character of the corresponding code (0 to 255)
     ;; incf the bin in one.
     (incf (aref bins ch))))
 
-(defun histogram-binary-file (s)
-  "Histogram. Process the whole file as binary file."
+(defun histogram-binary-file (path)
+  "Histogram. Process the whole file as binary file.
+Returns histogram bins"
   (declare (inline process-byte))
-  (let* ((path (status-path s))
-         (buffer (make-buffer *chunk-size*))
-         (bins (status-bins s)))
+  (let* ((buffer (make-buffer *chunk-size*))
+         (bins (make-histogram-bins)))
     (with-open-file (str path :element-type 'tbyte)
       ;; read the whole file??? no... do it in chunks...
       (prog (res)
@@ -61,8 +58,8 @@ Histogram counts how many times a character of the corresponding code (0 to 255)
                do (process-byte (aref buffer i) bins))
          (when (> res 0)
            (go init)))
-      ;; return status
-      s
+      ;; return histogram bins
+      (the tbins bins)
       )))
 
 (defun histogram-report (bins)

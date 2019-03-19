@@ -7,8 +7,7 @@
 
 (defpackage :auto-text/encoding
   (:use :cl
-   :auto-text/common
-   :auto-text/bom)
+   :auto-text/common)
   (:import-from :auto-text/histogram #:present-characters)
   (:export
    :detect-file-encoding

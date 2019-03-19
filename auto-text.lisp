@@ -15,34 +15,6 @@
 
 (declaim (optimize (speed 0) (debug 3)))
 
-;; cr-lf analysis
-(defun analyze-cr-lf (bins)
-  "Analyze file and find if it is terminated by CR or LF. 
-Or CRLF. 
-Or no line ending found!
-Or mixed results!
-
-This will work for 8-bit/7-bit encodings and UTF8 too.
-"
-  (declare (type tbins bins))
-  (let* ((cr (aref bins 13))
-         (lf (aref bins 10)))
-    (declare (type fixnum cr lf))
-    ;; cr... lf
-    (values (cond
-              ((zerop (+ cr lf)) :no-line-ending)
-              ((eql cr lf) :crlf)
-              ((and (> cr lf)
-                    (zerop lf)) :cr)
-              ((and (> lf cr)
-                    (zerop cr)) :lf)
-              (t :mixed))
-            ;; extra info
-            (list :cr cr
-                  :lf lf))
-    ))
-
-
 (defun sample-rows-bytes (path &key (eol-type :crlf)
                               (sample-size 10))
   "Sample some rows from path, analize them later.

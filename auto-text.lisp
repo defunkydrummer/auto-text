@@ -155,3 +155,75 @@ returns: histogram bins, number of valid lines read, number of invalid lines.
            (return (values megabins valid-lines invalid-lines)))
         ))))
 
+
+
+;; do automatic analysis
+(defun analyze (path &key (sample-size 10))
+  "Automatically analyze the file."
+  (format t "Reading file for analysis... ~A~%" path)
+  (let* ((bins (histogram-binary-file path))
+         (eol-type (analyze-cr-lf bins))
+         (delimiters-report (delimiters-report bins))
+         (bom-type (detect-bom-type path)))
+    (format t "Eol-type: ~a~% Likely delimiter? ~a  ~%BOM: ~a ~%"
+            eol-type
+            (prin1-to-string (caar delimiters-report))
+            bom-type)
+    (if (and bom-type
+             (not (eql bom-type :utf-8)))
+        (progn 
+          (format t "Bom type != UTF-8 requires stopping at this point.~%")
+          (list :eol-type eol-type
+                :delimiter (caar delimiters-report)
+                :bom-type bom-type))
+        
+        ;; else
+        ;; when no BOM detected, try to detect encoding
+        (let ((encodings
+                (if (eql bom-type :utf-8) '(:utf-8)
+                             (detect-file-encoding bins)))
+              (delimiter (caar delimiters-report)))
+          (format t "Possible encodings: ~{ ~a ~}~%"
+                  encodings)
+          ;; when at least one encoding detected,
+          ;; and CR/LF is not mixed,
+          ;; and delimiter is valid CSV delimiter
+          ;; try reading some rows as CSV...
+          (when (and  encodings
+                      (find (char-code delimiter)
+                            *valid-csv-delimiters*
+                            :test 'equal)
+                      (not (equal eol-type :mixed)))
+            (format t "Sampling rows as CSV for checking width...~&")
+            (let* ((encoding (car encodings))
+                   (rows
+                     (sample-rows-string
+                      path
+                      :eol-type eol-type
+                      :encoding encoding
+                      :sample-size sample-size)))
+              ;;use cl-csv to check if all fields have same length
+              (let* ((parsed-rows
+                       (loop for r in rows
+                             collecting 
+                             (cl-csv:read-csv-row r
+                                                  :separator delimiter)))
+                     (len
+                       (loop for pr in parsed-rows
+                             collecting (length pr)))
+                     (all-equal
+                       ;; all rows have same length
+                       (loop for i from 0 to (- (length len) 2)
+                             always (equal (elt len i)
+                                           (elt len (1+ i))))))
+                (list :same-number-of-columns all-equal
+                      :delimiter delimiter
+                      :eol-type eol-type
+                      :bom-type bom-type
+                      :encoding encoding))))))))
+
+
+
+
+
+

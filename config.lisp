@@ -9,7 +9,8 @@
    :*eol*
    :*chunk-size*
    :*eol-buffer-size*
-   :*delimiter-chars-vector*))
+   :*delimiter-chars-vector*
+   :*valid-csv-delimiters*))
 
 (in-package :auto-text/config)
 
@@ -32,5 +33,13 @@ Needs to be bigger than the largest line expected!")
           (char-code #\,)
           (char-code #\;)
           13                            ;CR
-          10)                           ;LF
+          10)                          ;LF
   "Delimiter chars to look for")
+
+(defparameter *valid-csv-delimiters*
+  (vector (char-code #\Tab)
+          (char-code #\|)
+          (char-code #\,)
+          (char-code #\;))
+  "Valid CSV delimiters for parsing a file.")
+

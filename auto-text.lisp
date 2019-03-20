@@ -165,7 +165,7 @@ returns: histogram bins, number of valid lines read, number of invalid lines.
          (eol-type (analyze-cr-lf bins))
          (delimiters-report (delimiters-report bins))
          (bom-type (detect-bom-type path)))
-    (format t "Eol-type: ~a~% Likely delimiter? ~a  ~%BOM: ~a ~%"
+    (format t "Eol-type: ~a~%Likely delimiter? ~a  ~%BOM: ~a ~%"
             eol-type
             (prin1-to-string (caar delimiters-report))
             bom-type)
@@ -194,7 +194,7 @@ returns: histogram bins, number of valid lines read, number of invalid lines.
                             *valid-csv-delimiters*
                             :test 'equal)
                       (not (equal eol-type :mixed)))
-            (format t "Sampling rows as CSV for checking width...~&")
+            (format t "Sampling ~D rows as CSV for checking width...~&" sample-size)
             (let* ((encoding (car encodings))
                    (rows
                      (sample-rows-string

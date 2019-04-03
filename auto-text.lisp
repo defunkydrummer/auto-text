@@ -9,7 +9,12 @@
    :auto-text/config
    :auto-text/histogram
         :auto-text/eol
-        :auto-text/encoding))
+   :auto-text/encoding)
+  (:export
+   :analyze
+   :fixed-cols-to-csv
+   :sample-rows-bytes
+   ))
 
 (in-package :auto-text)
 
@@ -232,6 +237,7 @@ Input parameters are number of characters per line."
 ;; Requires start and end of each column as a pair.
 ;; note: column indexes start in 0
 ;; character at column-end is not read --> indexes are [a,b[
+;; line-width is record width without including CR/LF
 ;;
 ;; start-line = 1 : start at first line
 ;; start-position = start position index (in bytes)

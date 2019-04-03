@@ -13,7 +13,7 @@
   (:export
    :advance-after-eol
    ;:fetch-line
-   :fetch-fixed-amount-of-characters
+   ;:fetch-fixed-amount-of-characters
    :filter-eol-on-string))
 
 (in-package :auto-text/eol)
@@ -117,7 +117,7 @@ Returns: new file position or NIL on EOF."
 (defun filter-eol-on-string (string eol-vector &optional (new-character #\Space))
   "Filter EOL on string, replace with new-character. 
 STRING IS RETURNED (dont use the buffer)"
-  (break string)
+  ;(break string)
   (loop for chcode across eol-vector
         do
         (when (find (code-char chcode) string :test #'equal)

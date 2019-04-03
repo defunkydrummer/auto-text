@@ -80,80 +80,80 @@ Input parameters are number of characters per line."
   (and (eql max avg) (eql max min) T))
 
 
-(defun histogram-fixed-width-file (path &key width eol-type encoding
-                                          (separator-char #\Space)
-                                          (max-rows nil))
-  "
-automatically detect fixed width start of columns...
-by making histogram on the position of each character in the line: how many are spaces?
+;; (defun histogram-fixed-width-file (path &key width eol-type encoding
+;;                                           (separator-char #\Space)
+;;                                           (max-rows nil))
+;;   "
+;; automatically detect fixed width start of columns...
+;; by making histogram on the position of each character in the line: how many are spaces?
 
-requires reading the file one line at a time.
+;; requires reading the file one line at a time.
 
-returns: histogram bins, number of valid lines read, number of invalid lines.
-"
-  (declare (type fixnum width)
-           (type symbol eol-type encoding)
-           (type character separator-char)
-           (type pathname path)
-           (type (or fixnum null) max-rows)
-           (optimize (speed 3)))
-  (let* ((buffer (make-buffer *eol-buffer-size*))
-         ;; index: the position within the line -> array
-         ;; value: how many spaces appear
-         (megabins
-           (make-array width
-                       :element-type 'fixnum 
-                       :adjustable nil
-                       :displaced-to nil
-                       ))
-         (eol-vector (getf *eol* eol-type)))
-    (declare (type simple-array megabins buffer))
-    (or eol-vector (error "Invalid eol-type"))
-    (with-open-file (str path :element-type 'tbyte)
-      ;; read each record
-      (let ((line buffer)
-            (sline "")
-            (valid-lines 0)
-            (invalid-lines 0))
-        (declare (type string sline)
-                 (type simple-array buffer)
-                 (type fixnum valid-lines invalid-lines))
-        (prog ()
-         init
-           (setf line (fetch-line str eol-vector buffer))
-           ;; decode line to string
-           ;; because UTF-8 is variable length, for example.
-           (when line
-             (setf sline (babel:octets-to-string line :encoding encoding))
-             (if (eql (length sline) width)
-                 (progn 
-                   ;; do histogram:
-                   ;; array[x]: number of times space appears
-                   ;; x: position of the character within the line
-                   ;; (but the line is decoded using Babel!)
-                   (loop for pos of-type fixnum from 0 to (1- width)
-                         for char of-type character = (aref sline pos)
-                         when (eql char separator-char)
-                         do (incf (aref megabins pos))) 
+;; returns: histogram bins, number of valid lines read, number of invalid lines.
+;; "
+;;   (declare (type fixnum width)
+;;            (type symbol eol-type encoding)
+;;            (type character separator-char)
+;;            (type pathname path)
+;;            (type (or fixnum null) max-rows)
+;;            (optimize (speed 3)))
+;;   (let* ((buffer (make-buffer *eol-buffer-size*))
+;;          ;; index: the position within the line -> array
+;;          ;; value: how many spaces appear
+;;          (megabins
+;;            (make-array width
+;;                        :element-type 'fixnum 
+;;                        :adjustable nil
+;;                        :displaced-to nil
+;;                        ))
+;;          (eol-vector (getf *eol* eol-type)))
+;;     (declare (type simple-array megabins buffer))
+;;     (or eol-vector (error "Invalid eol-type"))
+;;     (with-open-file (str path :element-type 'tbyte)
+;;       ;; read each record
+;;       (let ((line buffer)
+;;             (sline "")
+;;             (valid-lines 0)
+;;             (invalid-lines 0))
+;;         (declare (type string sline)
+;;                  (type simple-array buffer)
+;;                  (type fixnum valid-lines invalid-lines))
+;;         (prog ()
+;;          init
+;;            (setf line (fetch-line str eol-vector buffer))
+;;            ;; decode line to string
+;;            ;; because UTF-8 is variable length, for example.
+;;            (when line
+;;              (setf sline (babel:octets-to-string line :encoding encoding))
+;;              (if (eql (length sline) width)
+;;                  (progn 
+;;                    ;; do histogram:
+;;                    ;; array[x]: number of times space appears
+;;                    ;; x: position of the character within the line
+;;                    ;; (but the line is decoded using Babel!)
+;;                    (loop for pos of-type fixnum from 0 to (1- width)
+;;                          for char of-type character = (aref sline pos)
+;;                          when (eql char separator-char)
+;;                          do (incf (aref megabins pos))) 
 
-                   ;; next line
-                   (incf valid-lines)
-                   (when max-rows
-                     (if (eql max-rows valid-lines)
-                         (go end)))
-                   (go init))
-                 ;; else
-                 (progn
-                   (format t "** Line of unequal width ~D at stream position ~D~%"
-                           (length sline)
-                           (file-position str))
-                   (format t "~A~%" sline)
-                   (incf invalid-lines)
-                   (go init))
-                 ))
-         end
-           (return (values megabins valid-lines invalid-lines)))
-        ))))
+;;                    ;; next line
+;;                    (incf valid-lines)
+;;                    (when max-rows
+;;                      (if (eql max-rows valid-lines)
+;;                          (go end)))
+;;                    (go init))
+;;                  ;; else
+;;                  (progn
+;;                    (format t "** Line of unequal width ~D at stream position ~D~%"
+;;                            (length sline)
+;;                            (file-position str))
+;;                    (format t "~A~%" sline)
+;;                    (incf invalid-lines)
+;;                    (go init))
+;;                  ))
+;;          end
+;;            (return (values megabins valid-lines invalid-lines)))
+;;         ))))
 
 
 
@@ -224,6 +224,74 @@ returns: histogram bins, number of valid lines read, number of invalid lines.
 
 
 
+;;-------------------------------------
+;; Output to CSV from fixed column width format. 
+;; Considering a file of this format:
+;; |COL1 |COL2   |COL3|   etc. (with or without delimiter)
+;; Output a CSV.
+;; Requires start and end of each column as a pair.
+;; note: column indexes start in 0
+;; character at column-end is not read --> indexes are [a,b[
+;;
+;; start-line = 1 : start at first line
+;; start-position = start position index (in bytes)
+;;
+;; Note: CR/LF inside records will be replaced with #\Space
+;;-------------------------------------
+;; REQUIRES CL-CSV
+(defun fixed-cols-to-csv (file-in file-out
+                          line-width
+                          column-index-list ;list like '((0 5) (6 10)) etc
+                          &key (start-line 1)
+                               (start-position 0)
+                               (trim-fields T) ; apply rtrim and ltrim on all fields?
+                               (eol-type :crlf)
+                               in-external-format
+                               (out-external-format :default))
+  (assert (getf *eol* eol-type)) 
+  (let ((buffer (make-array (* line-width 3)
+                            :element-type 'character))
+        (eol-vector (getf *eol* eol-type))
+        (string ""))
+    (with-open-file (str-in file-in
+                            :direction :input
+                            :external-format in-external-format)
+      (file-position str-in start-position)
+      ;; advance to offset if needed
+      ;; skip number of lines if needed
+      (when (> start-line 1)
+        (dotimes (x (1- start-line))
+          (read-line str-in)))
+      (with-open-file (str-out file-out
+                               :direction :output
+                               :external-format out-external-format)
+        (prog (num)
+         init
+           (setf num
+                 (read-sequence buffer str-in :start 0 :end line-width))
+           
+           (when (zerop num) (go end))
+           (setf string
+                 (subseq buffer 0 num))
+           ;(break string)
+           
+           ;; Filter CR/LF on string
+           (setf string (filter-eol-on-string string eol-vector #\Space))
 
-
+           ;; split in columns, send to cl-csv
+           (cl-csv:write-csv-row 
+            (loop for index in column-index-list
+                  for start = (first index)
+                  for end = (second index)
+                  collecting
+                  (if trim-fields
+                      (string-trim '(#\Space) (subseq string start end))
+                      (subseq string start end)))
+            :stream str-out)
+           ;; advance EOL characters
+           (file-position str-in
+                          (+ (file-position str-in) (length eol-vector)))
+           (go init)
+         end
+           (return T))))))
 

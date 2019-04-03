@@ -1,6 +1,8 @@
 ;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
 ;; MIT License
 
+;; ----- CSV UTILS ------
+
 (in-package :common-lisp)
 (defpackage :auto-text/csv
   (:use :cl)
@@ -32,6 +34,7 @@
   (loop for c in alist do
         (format t "~0,0T~a ~1,40T~d~%" (car c) (cdr c))))
 
+;; represents a CSV file and its configuration / metadata
 (defclass csv-config ()
   ((path :initarg :path
          :accessor csv-path

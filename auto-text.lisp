@@ -276,7 +276,15 @@ Input parameters are number of characters per line."
            (setf num
                  (read-sequence buffer str-in :start 0 :end line-width))
            
-           (when (zerop num) (go end))
+           (cond ((zerop num) (go end))
+                 ((< num line-width)
+                  ;; we have read less characters than requested.
+                  ;; warning
+                  (format t "Warning: Read ~A characters, expected ~A. Skipping line.~%"
+                          num
+                          line-width)
+                  ;; go next line.
+                  (go init)))
            (setf string
                  (subseq buffer 0 num))
            ;(break string)

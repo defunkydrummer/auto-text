@@ -119,38 +119,45 @@ Each line does not include the EOL"
           ;; and CR/LF is not mixed,
           ;; and delimiter is valid CSV delimiter
           ;; try reading some rows as CSV...
-          (when (and  encodings
+          (if (and encodings
                       (find (char-code delimiter)
                             *valid-csv-delimiters*
                             :test 'equal)
                       (not (equal eol-type :mixed)))
-            (or silent (format t "Sampling ~D rows as CSV for checking width...~&" sample-size))
-            (let* ((encoding (car encodings))
-                   (rows
-                     (sample-rows-string
-                      path
-                      :eol-type eol-type
-                      :encoding encoding
-                      :sample-size sample-size)))
-              ;;use cl-csv to check if all fields have same length
-              (let* ((parsed-rows
-                       (loop for r in rows
-                             collecting 
-                             (cl-csv:read-csv-row r
-                                                  :separator delimiter)))
-                     (len
-                       (loop for pr in parsed-rows
-                             collecting (length pr)))
-                     (all-equal
-                       ;; all rows have same length
-                       (loop for i from 0 to (- (length len) 2)
-                             always (equal (elt len i)
-                                           (elt len (1+ i))))))
-                (list :same-number-of-columns all-equal
-                      :delimiter delimiter
-                      :eol-type eol-type
-                      :bom-type bom-type
-                      :encoding encoding))))))))
+            (progn 
+              (or silent (format t "Sampling ~D rows as CSV for checking width...~&" sample-size))
+              (let* ((encoding (car encodings))
+                     (rows
+                       (sample-rows-string
+                        path
+                        :eol-type eol-type
+                        :encoding encoding
+                        :sample-size sample-size)))
+                ;;use cl-csv to check if all fields have same length
+                (let* ((parsed-rows
+                         (loop for r in rows
+                               collecting 
+                               (cl-csv:read-csv-row r
+                                                    :separator delimiter)))
+                       (len
+                         (loop for pr in parsed-rows
+                               collecting (length pr)))
+                       (all-equal
+                         ;; all rows have same length
+                         (loop for i from 0 to (- (length len) 2)
+                               always (equal (elt len i)
+                                             (elt len (1+ i))))))
+                  (list :same-number-of-columns all-equal
+                        :delimiter delimiter
+                        :eol-type eol-type
+                        :bom-type bom-type
+                        :encoding encoding))))
+            ;; couldn't sample rows as CSV
+            (list :delimiter delimiter
+                  :eol-type eol-type
+                  :bom-type bom-type
+                  :encoding (car encodings))
+            )))))
 
 
 

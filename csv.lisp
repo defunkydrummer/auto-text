@@ -9,7 +9,8 @@
   (:export
    :config-csv
    :display-csv-header
-   :execute-for-csv-columns))
+   :execute-for-csv-columns
+   :fixed-cols-to-csv))
 
 (in-package :auto-text/csv)
 
@@ -98,3 +99,84 @@ Columns are specified in columns-index-list. (First column = 0)"
                        :separator (csv-separator csv)
                        :quote (csv-quote-char csv)
                        ))))
+
+
+;;-------------------------------------
+;; Output to CSV from fixed column width format. 
+;; Considering a file of this format:
+;; |COL1 |COL2   |COL3|   etc. (with or without delimiter)
+;; Output a CSV.
+;; Requires start and end of each column as a pair.
+;; note: column indexes start in 0
+;; character at column-end is not read --> indexes are [a,b[
+;; line-width is record width without including CR/LF
+;;
+;; start-line = 1 : start at first line
+;; start-position = start position index (in bytes)
+;;
+;; Note: CR/LF inside records will be replaced with #\Space
+;;-------------------------------------
+;; REQUIRES CL-CSV
+(defun fixed-cols-to-csv (file-in file-out
+                          line-width
+                          column-index-list ;list like '((0 5) (6 10)) etc
+                          &key (start-line 1)
+                               (start-position 0)
+                               (trim-fields T) ; apply rtrim and ltrim on all fields?
+                               (eol-type :crlf)
+                               in-external-format
+                               (out-external-format :default))
+  (assert (getf *eol* eol-type)) 
+  (let ((buffer (make-array (* line-width 3)
+                            :element-type 'character))
+        (eol-vector (getf *eol* eol-type))
+        (string ""))
+    (with-open-file (str-in file-in
+                            :direction :input
+                            :external-format in-external-format)
+      (file-position str-in start-position)
+      ;; advance to offset if needed
+      ;; skip number of lines if needed
+      (when (> start-line 1)
+        (dotimes (x (1- start-line))
+          (read-line str-in)))
+      (with-open-file (str-out file-out
+                               :direction :output
+                               :external-format out-external-format)
+        (prog (num)
+         init
+           (setf num
+                 (read-sequence buffer str-in :start 0 :end line-width))
+           
+           (cond ((zerop num) (go end))
+                 ((< num line-width)
+                  ;; we have read less characters than requested.
+                  ;; warning
+                  (format t "Warning: Read ~A characters, expected ~A. Skipping line.~%"
+                          num
+                          line-width)
+                  ;; go next line.
+                  (go init)))
+           (setf string
+                 (subseq buffer 0 num))
+           
+           ;; Filter CR/LF on string
+           (setf string (filter-eol-on-string string eol-vector #\Space))
+
+           ;; split in columns, send to cl-csv
+           (cl-csv:write-csv-row 
+            (loop for index in column-index-list
+                  for start = (first index)
+                  for end = (second index)
+                  collecting
+                  (if trim-fields
+                      (string-trim '(#\Space) (subseq string start end))
+                      (subseq string start end)))
+            :stream str-out)
+           ;; advance EOL characters
+           (file-position str-in
+                          (+ (file-position str-in) (length eol-vector)))
+           (go init)
+         end
+           (return T))))))
+

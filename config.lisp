@@ -25,7 +25,7 @@
 
 (defparameter *eol-buffer-size* (* 32 (expt 2 10)) ;32K
   "Buffer size for locating an end of line.
-Needs to be bigger than the largest line expected!")  
+Needs to be bigger than the largest expected line!")  
 
 (defparameter *delimiter-chars-vector*
   (vector (char-code #\Tab)

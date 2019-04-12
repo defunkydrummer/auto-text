@@ -6,7 +6,7 @@
 (defsystem auto-text
   :version "0.1"
   :author "Flavio Egoavil also known as D E F U N K Y D R U M M E R"
-  :license "Proprietary"
+  :license "MIT"
   :depends-on (:babel
                :cl-csv)    
   :serial T

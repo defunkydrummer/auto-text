@@ -48,7 +48,30 @@ For detection of **asian and far eastern** languages like Chinese, Japanese, Kor
 (auto-text:analyze "my-file.txt") 
 ```
 
-This will produce a property-list (plist) with the following keys:
+Sample out:
+
+```
+CL-USER> (auto-text:analyze #P"my.txt" :silent nil)
+Reading file for analysis... my.txt
+Eol-type: CRLF
+Likely delimiter? #\,  
+BOM: NIL 
+Possible encodings:  UTF-8 
+Sampling 10 rows as CSV for checking width...
+(:SAME-NUMBER-OF-COLUMNS T :DELIMITER #\, :EOL-TYPE :CRLF :BOM-TYPE NIL
+ :ENCODING :UTF-8)
+ 
+CL-USER> (auto-text:analyze #P"file.txt" :silent nil)
+Reading file for analysis... file.txt
+Eol-type: CRLF
+Likely delimiter? #\Return  
+BOM: NIL 
+Possible encodings:  WINDOWS-1252 
+(:DELIMITER #\Return :EOL-TYPE :CRLF :BOM-TYPE NIL :ENCODING :WINDOWS-1252)
+```
+Silence messages by passing `:silent T`
+
+The `analyze` function will produce a property-list (plist) with the following keys:
 
 - :same-number-of-columns : True if file appears to have the same number of columns when read as a CSV.
 
@@ -93,7 +116,9 @@ See `config.lisp`, to config:
 
 ## Implementations
 
-Should run in any implementation where BABEL and CL-CSV work. 
+So far works on SBCL, CCL. 
+
+Should run in any implementation where BABEL and CL-CSV work fine!!
 
 ## Author
 

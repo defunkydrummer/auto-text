@@ -34,7 +34,7 @@ In these cases, given a text file, its useful to finding out the following:
  
  This library is intended for working with english or "latin-1" (spanish, french, portuguese, italian) data, thus the choice of encodings.
  
- However, more encoding detection rules can be added or edited in a simple way, see `encoding.lisp`, for example the current rules are as follows:
+ However, more encoding detection rules can be added or edited in a simple way, see `encoding.lisp`, the code is simple to understand. 
 
 For detection of **asian and far eastern** languages like Chinese, Japanese, Korean, Russian, Arabic, Greek, see the [inquisitor](https://github.com/t-sin/inquisitor) lib.  Inquisitor doesn't work with latin or west european languages.
 

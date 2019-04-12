@@ -116,7 +116,7 @@ See `config.lisp`, to config:
 
 ## Implementations
 
-So far works on SBCL, CCL. 
+So far works on SBCL, CCL, CLISP, and ABCL.
 
 Should run in any implementation where BABEL and CL-CSV work fine!!
 

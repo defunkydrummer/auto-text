@@ -123,7 +123,7 @@ Each line does not include the EOL"
                       (find (char-code delimiter)
                             *valid-csv-delimiters*
                             :test 'equal)
-                      (not (equal eol-type :mixed)))
+                      (not (find eol-type '(:mixed :no-line-ending))))
             (progn 
               (or silent (format t "Sampling ~D rows as CSV for checking width...~&" sample-size))
               (let* ((encoding (car encodings))

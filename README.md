@@ -1,14 +1,20 @@
-#AUTO-TEXT
+## AUTO-TEXT
 
-Common Lisp library for, given a text file, finding out the following:
+This is a Common Lisp library intended for working with unknown "real-life" text files that hopefully hold data in table form (i.e. CSV files, fixed-width files, etc). 
+
+In these cases, given a text file, its useful to finding out the following:
 
 - Which file encoding can we use? UTF-8, 16, 32? ISO-8859-1? Windows-1252?
 
 - Is the file delimited? Which is the delimiter? (i.e. tab, comma, etc)
 
-- Which is the file ending? CR, LF? CR and LF?
+- Which is the file ending? CR, LF? CR and LF? Does it have mixed encoding? (Files with more than one different end of line indicator(!!)) 
 
 - Given the above, can we read the file as CSV and get the same amount of columns all the time?
+
+- Can we get how many times each different character appears through a file?
+
+- Can we sample some rows, without having to hold all the file in memory?
 
 **Plus**
 
@@ -34,6 +40,8 @@ For detection of **asian and far eastern** languages like Chinese, Japanese, Kor
 
 ## Usage
 
+**Main usage:**
+
 ```lisp
 (ql:quickload "auto-text")
 
@@ -46,11 +54,28 @@ This will produce a property-list (plist) with the following keys:
 
 - :delimiter : column separator char
 
-- :eol-type : type of end-of-line char (:CR, :LF, or :CRLF)
+- :eol-type : type of end-of-line char (:CR, :LF, :CRLF, :MIXED, :NO-LINE-ENDING)
 
 - :bom-type : if BOM is detected, which is the UTF type reported.
 
 - :encoding : detected encoding.
+
+
+**Sample an arbitrary number of rows (lines) from an arbitrarily-sized file:** See `sample-rows-string`:
+
+```lisp
+(defun sample-rows-string (path &key (eol-type :crlf)
+                                     (encoding :utf-8)
+                                     (sample-size 10))
+  "Sample some rows from path, return as list of strings.
+Each line does not include the EOL"
+  (loop for rows in (sample-rows-bytes path :eol-type eol-type
+                                            :sample-size sample-size)
+        collecting 
+        (bytes-to-string rows encoding)))
+```
+
+**Obtain a histogram** or frequency hash-table that will tell you how many times a character appears on the whole file. (NOTE: This reads the file in byte mode): See `histogram-binary-file` on `histogram.lisp`
 
 ## Config
 
@@ -63,6 +88,8 @@ See `config.lisp`, to config:
 ## Hacking
 
 - Feel free to improve the encoding detection rules on `encoding.lisp` and send me a PR.
+
+- There are more features inside the source code that will later be polished, exported, and 'surfaced' to this readme. 
 
 ## Implementations
 

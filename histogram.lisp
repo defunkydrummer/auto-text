@@ -1,9 +1,9 @@
 ;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
 ;; MIT License
 
-(in-package :common-lisp)
 
-(defpackage :auto-text/histogram
+
+(common-lisp:defpackage :auto-text/histogram
   (:use :cl
    :auto-text/common
         :auto-text/config
@@ -18,10 +18,10 @@
    :analyze-cr-lf
    ))
 
-(in-package :auto-text/histogram)
+(common-lisp:in-package :auto-text/histogram)
 
 (defun make-histogram-bins ()
-  (make-array 256 :element-type 'fixnum
+  (make-array 256 :element-type 'tbins-element
                   :adjustable nil
                   :initial-element 0
                   :displaced-to nil))
@@ -40,7 +40,7 @@
   "Process byte for histogram.
 Histogram counts how many times a character of the corresponding code (0 to 255) appears."
   (declare (type tbyte ch)
-           (type (simple-array fixnum) bins))
+           (type (simple-array tbins-element) bins))
   (when (<= 0 ch 255)
     ;; incf the bin in one.
     (incf (aref bins ch))))
@@ -50,15 +50,17 @@ Histogram counts how many times a character of the corresponding code (0 to 255)
 Returns histogram bins"
   (declare (inline process-byte))
   (let* ((buffer (make-buffer *chunk-size*))
-         (bins (make-histogram-bins)))
+         (bins (make-histogram-bins))
+         (res 0))
+    (declare (type tinteger res))
     (with-open-file (str path :element-type 'tbyte)
       ;; read the whole file??? no... do it in chunks...
-      (prog (res)
+      (prog ()
        init
          ;; read buffer...
          (setf res (read-sequence buffer str));returns length of read sequence
          ;; apply process
-         (loop for i of-type fixnum from 0 to (1- res)
+         (loop for i of-type tinteger from 0 to (1- res)
                do (process-byte (aref buffer i) bins))
          (when (> res 0)
            (go init)))
@@ -107,7 +109,7 @@ This will work for 8-bit/7-bit encodings and UTF8 too.
   (declare (type tbins bins))
   (let* ((cr (aref bins 13))
          (lf (aref bins 10)))
-    (declare (type fixnum cr lf))
+    (declare (type tbins-element cr lf))
     ;; cr... lf
     (values (cond
               ((zerop (+ cr lf)) :no-line-ending)

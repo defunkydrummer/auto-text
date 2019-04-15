@@ -3,8 +3,8 @@
 
 ;; ----- CSV UTILS ------
 
-(in-package :common-lisp)
-(defpackage :auto-text/csv
+
+(common-lisp:defpackage :auto-text/csv
   (:use :cl)
   (:export
    :config-csv
@@ -12,7 +12,7 @@
    :execute-for-csv-columns
    :fixed-cols-to-csv))
 
-(in-package :auto-text/csv)
+(common-lisp:in-package :auto-text/csv)
 
 ;; read header
 (defun csv-header (path &key separator encoding)

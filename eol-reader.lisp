@@ -1,13 +1,13 @@
 ;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
 ;; MIT License
 
-(in-package :common-lisp)
+
 
 ;; **********************
 ;; Functions for reading byte streams line per line
 ;; **********************
 
-(defpackage :auto-text/eol
+(common-lisp:defpackage :auto-text/eol
   (:use :cl
    :auto-text/common)
   (:export
@@ -16,7 +16,7 @@
    ;:fetch-fixed-amount-of-characters
    :filter-eol-on-string))
 
-(in-package :auto-text/eol)
+(common-lisp:in-package :auto-text/eol)
 
 (declaim (optimize (speed 3)))
 
@@ -35,6 +35,7 @@ Returns: new file position or NIL on EOF."
            (type simple-vector eol-vector)
            (type tbytebuffer buffer))
   (let ((num (read-sequence buffer stream)))
+    (declare (type tinteger num))
     (if (zerop num) nil
         (progn
           ;; search for the EOL

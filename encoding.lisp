@@ -3,9 +3,9 @@
 
 ;; encoding detection
 
-(in-package :common-lisp)
 
-(defpackage :auto-text/encoding
+
+(common-lisp:defpackage :auto-text/encoding
   (:use :cl
    :auto-text/common)
   (:import-from :auto-text/histogram #:present-characters)
@@ -14,7 +14,7 @@
    :detect-bom-type
    ))
 
-(in-package :auto-text/encoding)
+(common-lisp:in-package :auto-text/encoding)
 
 
 ;; file encoding analysis

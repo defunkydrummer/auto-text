@@ -1,9 +1,9 @@
 ;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
 ;; MIT License
 
-(in-package :common-lisp)
 
-(defpackage :auto-text
+
+(common-lisp:defpackage :auto-text
   (:use :cl
    :auto-text/common
    :auto-text/config
@@ -16,7 +16,7 @@
    :sample-rows-bytes
    ))
 
-(in-package :auto-text)
+(common-lisp:in-package :auto-text)
 
 ;(declaim (optimize (speed 0) (debug 3)))
 

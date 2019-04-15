@@ -1,9 +1,9 @@
 ;; Copyright (c) Flavio Egoavil <F_egoavil@hotmail.com> aka D E F U N K Y D R U M M E R
 ;; MIT License
 
-(in-package :common-lisp)
 
-(defpackage :auto-text/config
+
+(common-lisp:defpackage :auto-text/config
   (:use :cl)
   (:export
    :*eol*
@@ -12,7 +12,7 @@
    :*delimiter-chars-vector*
    :*valid-csv-delimiters*))
 
-(in-package :auto-text/config)
+(common-lisp:in-package :auto-text/config)
 
 (defparameter *eol*
   '(:cr #(13)
